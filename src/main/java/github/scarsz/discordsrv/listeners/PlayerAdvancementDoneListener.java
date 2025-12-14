@@ -59,15 +59,31 @@ public class PlayerAdvancementDoneListener implements Listener {
     private static final Object GAMERULE;
 
     static {
-        String gamerule = "announceAdvancements";
+        String newGameruleName = "minecraft:show_advancement_messages";
+        String oldGameruleName = "announceAdvancements"; // The old name
         Object gameruleValue = null;
+        String effectiveGameruleName = newGameruleName; // Default to new name
+
         try {
             Class<?> gameRuleClass = Class.forName("org.bukkit.GameRule");
-            gameruleValue = gameRuleClass.getMethod("getByName", String.class).invoke(null, gamerule);
-        } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) {}
+            // Try the new namespaced gamerule first
+            gameruleValue = gameRuleClass.getMethod("getByName", String.class).invoke(null, newGameruleName);
+
+            if (gameruleValue == null) {
+                // If new gamerule not found, try the old one
+                gameruleValue = gameRuleClass.getMethod("getByName", String.class).invoke(null, oldGameruleName);
+                if (gameruleValue != null) {
+                    effectiveGameruleName = oldGameruleName; // Use old name if found
+                }
+            }
+        } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException ignored) {
+            // If GameRule class or method not found, it means we are on an older server version
+            // In this case, we should default to the old gamerule name as a string
+            effectiveGameruleName = oldGameruleName;
+        }
 
         GAMERULE_CLASS_AVAILABLE = gameruleValue != null;
-        GAMERULE = GAMERULE_CLASS_AVAILABLE ? gameruleValue : gamerule;
+        GAMERULE = GAMERULE_CLASS_AVAILABLE ? gameruleValue : effectiveGameruleName;
     }
 
     public PlayerAdvancementDoneListener() {
